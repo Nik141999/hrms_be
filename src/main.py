@@ -35,4 +35,4 @@ app.include_router(time_tracker_route.router)
 app.include_router(org_type_route.router)
 @app.get("/", tags=["health"])
 async def health():
-    return {"message": "Hello World!"}
+    return {"message": "Hello World"}
