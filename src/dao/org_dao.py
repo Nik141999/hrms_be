@@ -46,17 +46,24 @@ async def create_org_in_db(
     website: str = None,
     gst_number: str = None,
 ):
+    # Check for duplicate org name
     result = await db.execute(select(Organization).where(Organization.org_name == org_name))
     existing_org = result.scalar_one_or_none()
     if existing_org:
         raise ValueError(f"Organization name '{org_name}' already exists.")
 
+    # Check for duplicate GST number
     if gst_number:
         gst_result = await db.execute(select(Organization).where(Organization.gst_number == gst_number))
         existing_gst_org = gst_result.scalars().first()
         if existing_gst_org:
             raise ValueError(f"GST number '{gst_number}' is already registered.")
 
+    # ✅ Generate OTP before using
+    otp = generate_otp()
+    # otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+
+    # Create organization
     new_org = Organization(
         org_name=org_name,
         email=email,
@@ -68,20 +75,51 @@ async def create_org_in_db(
         description=description,
         website=website,
         gst_number=gst_number,
+        otp=otp,
     )
+
     db.add(new_org)
     await db.commit()
     await db.refresh(new_org)
+
+    # Send OTP email
+    send_otp_email(email, otp)
+
     return new_org
 
 
 async def update_org_in_db(db: AsyncSession, org_id: str, update_data: dict):
     org = await get_org_by_id(db, org_id)
-    if org:
-        for key, value in update_data.items():
+    if not org:
+        return None
+
+    for key, value in update_data.items():
+        # Handle relationship: organization_type (expects OrganizationType instance)
+        if key == "organization_type":
+            org_type_result = await db.execute(
+                select(OrganizationType).where(OrganizationType.org_type.ilike(value))
+            )
+            org_type = org_type_result.scalars().first()
+            if not org_type:
+                raise ValueError("Invalid organization_type")
+            org.organization_type = org_type
+
+        # Handle relationship: role_type (expects Role instance)
+        elif key == "role_type":
+            role_result = await db.execute(
+                select(Role).where(Role.role_type.ilike(value))
+            )
+            role = role_result.scalars().first()
+            if not role:
+                raise ValueError("Invalid role_type")
+            org.role = role
+
+        # Regular fields (email, password, etc.)
+        else:
             setattr(org, key, value)
-        await db.commit()
-        await db.refresh(org)
+
+    await db.commit()
+    await db.refresh(org)
     return org
 
 async def delete_org_from_db(db: AsyncSession, org_id: str):
@@ -90,3 +128,9 @@ async def delete_org_from_db(db: AsyncSession, org_id: str):
         await db.delete(org)
         await db.commit()
     return org
+
+async def get_org_by_email_from_organization(db: AsyncSession, email: str):
+    result = await db.execute(
+        select(Organization).where(Organization.email == email)
+    )
+    return result.scalars().first()

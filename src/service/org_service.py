@@ -95,3 +95,24 @@ async def delete_org_service(org_id: str, db: AsyncSession):
     if not org:
         raise ValueError("Organization not found")
     return {"detail": "Organization deleted successfully"}
+
+
+async def verify_org_otp_service(email: str, otp: str, db: AsyncSession):
+    org = await get_org_by_email_from_organization(db, email)
+    if not org:
+        raise ValueError("Organization not found")
+
+    print("📧 Email:", email)
+    print("🔒 OTP in DB:", org.otp)
+    print("✅ OTP submitted:", otp)
+
+    if str(org.otp).strip() != str(otp).strip():
+        raise ValueError(f"Invalid OTP. Provided: {otp}, Expected: {org.otp}")
+
+    org.otp = None
+    org.is_active = True
+    await db.commit()
+    await db.refresh(org)
+
+    return {"detail": "OTP verified successfully"}
+

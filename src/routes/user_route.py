@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.utils.auth import get_current_user
@@ -19,9 +19,18 @@ router = APIRouter(tags=["User"], dependencies=[Depends(get_current_user)])
 async def create_user(
     user: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)  # ✅ Now a dict
+    current_user = Depends(get_current_user)
 ):
-    org_id = current_user.get("org_id")  # ✅ Access org_id from token payload
+    # Determine organization_id based on whether the current user is an Organization or a User
+    if hasattr(current_user, "org_name"):
+        # Logged in as Organization
+        org_id = current_user.id
+    elif hasattr(current_user, "organization_id"):
+        # Logged in as User
+        org_id = current_user.organization_id
+    else:
+        raise HTTPException(status_code=400, detail="Could not determine organization context")
+
     return await create_user_controller(user, db, org_id)
 
 
