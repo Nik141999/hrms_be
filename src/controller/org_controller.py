@@ -23,3 +23,10 @@ async def delete_org_controller(org_id: str, db: AsyncSession):
         return await delete_org_service(org_id, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+async def verify_otp_controller(email: str, otp: str, db: AsyncSession):
+    try:
+        return await verify_org_otp_service(email, otp, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    

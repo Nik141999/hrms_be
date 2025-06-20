@@ -39,16 +39,22 @@ async def create_user_service(user: UserCreate, db: AsyncSession, org_id: str) -
         department_id=department.id,
         organization_id=org_id
     )
+
+    # ✅ Refresh and load role and department relationships
+    await db.refresh(new_user, attribute_names=["role", "department"])
+
+    # Send credentials email
     send_credentials_email(to_email=user.email, user_email=user.email, password=user.password)
-    
+
     return UserResponse(
         id=new_user.id,
         email=new_user.email,
-        role_id=new_user.role_id,
-        department_id=new_user.department_id,
         first_name=new_user.first_name,
-        last_name=new_user.last_name
+        last_name=new_user.last_name,
+        role_type=new_user.role.role_type if new_user.role else None,
+        department_name=new_user.department.department_name if new_user.department else None
     )
+
 
 async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
     user = await get_user_by_id(db, user_id)
@@ -63,6 +69,7 @@ async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
         department_name=user.department.department_name if user.department else None
     )
 
+
 async def get_all_users_service(db: AsyncSession):
     users = await get_all_users(db)
     return [
@@ -76,6 +83,7 @@ async def get_all_users_service(db: AsyncSession):
         )
         for user in users
     ]
+
 
 async def update_user_service(user_id: str, user_update: UserUpdate, db: AsyncSession) -> UserResponse:
     role = None
@@ -109,7 +117,6 @@ async def update_user_service(user_id: str, user_update: UserUpdate, db: AsyncSe
         role_type=user.role.role_type if user.role else None,
         department_name=user.department.department_name if user.department else None
     )
-
 
 
 async def delete_user_service(user_id: str, db: AsyncSession):

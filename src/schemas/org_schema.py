@@ -19,11 +19,12 @@ class OrgCreate(BaseModel):
 
 class OrgUpdate(BaseModel):
     org_name: Optional[str] = None
+    email: Optional[EmailStr] = None
     password: Optional[str] = None
-
     address: Optional[str] = None
     phone_number: Optional[str] = None
     organization_type: Optional[str] = None
+    role_type: Optional[str] = None
     description: Optional[str] = None
     website: Optional[str] = None
     gst_number: Optional[str] = None
@@ -43,3 +44,7 @@ class OrgResponse(BaseModel):
     gst_number: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
