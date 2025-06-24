@@ -1,6 +1,7 @@
 from src.models.department import Department
 from uuid import uuid4
 from sqlalchemy.future import select
+from sqlalchemy import func
 
 async def create_department_dao(dept_data, db):
     new_dept = Department(id=str(uuid4()), department_name=dept_data.department_name)
@@ -8,6 +9,14 @@ async def create_department_dao(dept_data, db):
     await db.commit()
     await db.refresh(new_dept)
     return new_dept
+
+async def get_total_departments_count(db):
+    result = await db.execute(select(func.count()).select_from(Department))
+    return result.scalar_one()
+
+async def get_paginated_departments_dao(db, skip: int, limit: int):
+    result = await db.execute(select(Department).offset(skip).limit(limit))
+    return result.scalars().all()
 
 async def get_all_departments_dao(db):
     result = await db.execute(select(Department))

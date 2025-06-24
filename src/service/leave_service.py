@@ -6,16 +6,26 @@ from src.dao.leave_dao import (
     get_leave_by_id_and_user,
     update_leave_in_db,
     delete_leave_in_db,
+    get_total_leave_count
 )
-from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate
+from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse
 
 async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: str) -> LeaveResponse:
     new_leave = await create_leave_in_db(db, leave, user_id)
     return LeaveResponse.model_validate(new_leave)
 
-async def get_all_leaves_service(db: AsyncSession):
-    leaves = await get_all_leaves_by_user_id(db)
-    return [LeaveResponse.model_validate(leave) for leave in leaves]
+async def get_all_leaves_service(db: AsyncSession, page: int, limit: int) -> PaginatedLeaveResponse:
+    skip = (page - 1) * limit
+    total = await get_total_leave_count(db)
+    leaves = await get_all_leaves_by_user_id(db, skip=skip, limit=limit)
+
+    return PaginatedLeaveResponse(
+        totalItems=total,
+        totalPages=(total + limit - 1) // limit,
+        currentPage=page,
+        pageSize=limit,
+        leaves=[LeaveResponse.model_validate(leave) for leave in leaves]
+    )
 
 async def update_leave_service(leave_id: int, leave: LeaveUpdate, db: AsyncSession, user_id: str):
     existing_leave = await get_leave_by_id_and_user(db, leave_id, user_id)

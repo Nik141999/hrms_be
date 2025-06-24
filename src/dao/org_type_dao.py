@@ -9,9 +9,13 @@ async def create_organization_type_dao(db: AsyncSession, org_type: str) -> Organ
     await db.refresh(new_org_type)
     return new_org_type
 
-async def get_all_organization_types_dao(db: AsyncSession) -> list[OrganizationType]:
-    result = await db.execute(select(OrganizationType))
-    return result.scalars().all()
+async def get_all_organization_types_dao(db: AsyncSession, offset: int, limit: int):
+    total_result = await db.execute(select(OrganizationType))
+    total_items = len(total_result.scalars().all())
+
+    result = await db.execute(select(OrganizationType).offset(offset).limit(limit))
+    organization_types = result.scalars().all()
+    return total_items, organization_types
 
 async def get_organization_type_by_id_dao(db: AsyncSession, org_type_id: str) -> OrganizationType:
     result = await db.execute(select(OrganizationType).where(OrganizationType.id == org_type_id))

@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.utils.auth import get_current_user
 from src.utils.permission_checker import PermissionChecker
 from src.controller.user_controller import (
@@ -10,27 +9,19 @@ from src.controller.user_controller import (
     delete_user_controller,
     get_all_users_controller
 )
-from src.schemas.user import UserCreate, UserResponse, UserUpdate
+from src.schemas.user import UserCreate, UserResponse, UserUpdate, PaginatedUserResponse
 from src.database import get_db
 
 router = APIRouter(tags=["User"], dependencies=[Depends(get_current_user)])
 
 @router.post("/users", response_model=UserResponse, dependencies=[Depends(PermissionChecker("/users", "create"))])
-async def create_user(
-    user: UserCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    # Determine organization_id based on whether the current user is an Organization or a User
+async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     if hasattr(current_user, "org_name"):
-        # Logged in as Organization
         org_id = current_user.id
     elif hasattr(current_user, "organization_id"):
-        # Logged in as User
         org_id = current_user.organization_id
     else:
         raise HTTPException(status_code=400, detail="Could not determine organization context")
-
     return await create_user_controller(user, db, org_id)
 
 
@@ -39,9 +30,18 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
     return await get_user_controller(user_id, db)
 
 
-@router.get("/users", response_model=list[UserResponse], dependencies=[Depends(PermissionChecker("/users", "view"))])
-async def get_all_users(db: AsyncSession = Depends(get_db)):
-    return await get_all_users_controller(db)
+@router.get(
+    "/users",
+    response_model=PaginatedUserResponse,
+    dependencies=[Depends(PermissionChecker("/users", "view"))]
+)
+async def get_all_users(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    db: AsyncSession = Depends(get_db)
+):
+    return await get_all_users_controller(db, page, limit)
+
 
 
 @router.put("/users/{user_id}", response_model=UserResponse, dependencies=[Depends(PermissionChecker("/users/{user_id}", "edit"))])

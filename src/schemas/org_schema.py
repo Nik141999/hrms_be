@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -48,3 +48,10 @@ class OrgResponse(BaseModel):
 class OTPVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
+    
+class PaginatedOrgResponse(BaseModel):
+    totalItems: int
+    totalPages: int
+    currentPage: int
+    pageSize: int
+    organizations: List[OrgResponse]          

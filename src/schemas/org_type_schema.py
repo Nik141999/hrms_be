@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from typing import List
 from datetime import datetime
 
 class OrganizationTypeCreate(BaseModel):
@@ -13,5 +14,10 @@ class OrganizationTypeResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)  
+class PaginatedOrganizationTypeResponse(BaseModel):
+    totalItems: int
+    totalPages: int
+    currentPage: int
+    pageSize: int
+    organization_types: List[OrganizationTypeResponse]

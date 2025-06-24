@@ -1,6 +1,6 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.schemas.user import UserCreate, UserUpdate, UserResponse
+from src.schemas.user import UserCreate, UserUpdate
 from src.service.user_service import (
     create_user_service,
     get_user_service,
@@ -21,8 +21,9 @@ async def get_user_controller(user_id: str, db: AsyncSession):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-async def get_all_users_controller(db: AsyncSession):
-    return await get_all_users_service(db)
+async def get_all_users_controller(db: AsyncSession, page: int, limit: int):
+    return await get_all_users_service(db, page, limit)
+
 
 async def update_user_controller(user_id: str, user_update: UserUpdate, db: AsyncSession):
     try:

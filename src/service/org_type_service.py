@@ -8,8 +8,17 @@ from src.dao.org_type_dao import (
 async def create_organization_type_service(db: AsyncSession, org_type: str):
     return await create_organization_type_dao(db, org_type)
 
-async def get_all_organization_types_service(db: AsyncSession):
-    return await get_all_organization_types_dao(db)
+async def get_all_organization_types_service(db: AsyncSession, page: int, limit: int):
+    offset = (page - 1) * limit
+    total_items, items = await get_all_organization_types_dao(db, offset, limit)
+
+    return {
+        "totalItems": total_items,
+        "totalPages": (total_items + limit - 1) // limit,
+        "currentPage": page,
+        "pageSize": limit,
+        "organization_types": items,
+    }
 
 async def get_organization_type_by_id_service(db: AsyncSession, org_type_id: str):
     return await get_organization_type_by_id_dao(db, org_type_id)
