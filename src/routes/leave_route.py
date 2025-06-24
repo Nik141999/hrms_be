@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.auth import get_current_user
-from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate
+from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse
 from src.utils.permission_checker import PermissionChecker
 from src.controller.leave_controller import (
     create_leave_controller,
@@ -22,12 +22,14 @@ async def create_leave(
 ):
     return await create_leave_controller(leave, db, current_user.id)
 
-@router.get("/leaves", response_model=list[LeaveResponse],dependencies=[Depends(PermissionChecker("/leaves", "view"))])
+@router.get("/leaves", response_model=PaginatedLeaveResponse,dependencies=[Depends(PermissionChecker("/leaves", "view"))])
 async def get_all_leaves(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db),
     # current_user: User = Depends(get_current_user),
 ):
-    return await get_all_leaves_controller(db)
+    return await get_all_leaves_controller(db, page, limit)
 
 @router.put("/leaves/{leave_id}", response_model=LeaveResponse,dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "edit"))])
 async def update_leave(

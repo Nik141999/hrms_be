@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
 
 class DepartmentCreate(BaseModel):
     department_name: str
@@ -12,5 +13,11 @@ class DepartmentResponse(BaseModel):
     id: str
     department_name: str
 
-    class Config:
-        orm_mode = True    
+    model_config = ConfigDict(from_attributes=True)    
+
+class PaginatedDepartmentResponse(BaseModel):
+    totalItems: int
+    totalPages: int
+    currentPage: int
+    pageSize: int
+    departments: List[DepartmentResponse]        

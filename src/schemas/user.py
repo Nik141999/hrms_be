@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class UserLogin(BaseModel):
@@ -54,3 +54,11 @@ class OrgLoginResponse(BaseModel):
     token_type: str
     role_type: str
     organization: OrgResponse
+    
+    
+class PaginatedUserResponse(BaseModel):
+    totalItems: int
+    totalPages: int
+    currentPage: int
+    pageSize: int
+    users: List[UserResponse]    

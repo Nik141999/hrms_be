@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime
 
 class LeaveCreate(BaseModel):
@@ -26,3 +26,10 @@ class LeaveResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class PaginatedLeaveResponse(BaseModel):
+    totalItems: int
+    totalPages: int
+    currentPage: int
+    pageSize: int
+    leaves: List[LeaveResponse]

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.models.leave import Leave
+from sqlalchemy import func
 from src.schemas.leave_schema import LeaveCreate, LeaveUpdate
 
 async def create_leave_in_db(db: AsyncSession, leave: LeaveCreate, user_id: str):
@@ -16,8 +17,12 @@ async def create_leave_in_db(db: AsyncSession, leave: LeaveCreate, user_id: str)
     await db.refresh(new_leave)
     return new_leave
 
-async def get_all_leaves_by_user_id(db: AsyncSession):
-    result = await db.execute(select(Leave))
+async def get_total_leave_count(db: AsyncSession) -> int:
+    result = await db.execute(select(func.count()).select_from(Leave))
+    return result.scalar_one()
+
+async def get_all_leaves_by_user_id(db: AsyncSession, skip: int = 0, limit: int = 10):
+    result = await db.execute(select(Leave).offset(skip).limit(limit))
     return result.scalars().all()
 
 async def get_leave_by_id_and_user(db: AsyncSession, leave_id: int, user_id: str):

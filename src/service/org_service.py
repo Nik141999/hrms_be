@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 from src.dao.org_dao import *
-from src.schemas.org_schema import OrgCreate, OrgUpdate, OrgResponse
+from src.schemas.org_schema import OrgCreate, OrgUpdate, OrgResponse, PaginatedOrgResponse
 from src.utils.auth import get_hash_password
 
 async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
@@ -48,11 +49,14 @@ async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
     )
 
 
-async def get_all_org_service(db: AsyncSession):
-    orgs = await get_all_org(db)
-    response = []
-    for org in orgs:
-        response.append(OrgResponse(
+async def get_all_org_service(db: AsyncSession, page: int, limit: int) -> PaginatedOrgResponse:
+    total_items = await db.scalar(select(func.count()).select_from(Organization))
+    offset = (page - 1) * limit
+
+    orgs = await get_all_org(db, skip=offset, limit=limit)
+
+    org_list = [
+        OrgResponse(
             id=org.id,
             org_name=org.org_name,
             is_active=org.is_active,
@@ -63,8 +67,19 @@ async def get_all_org_service(db: AsyncSession):
             description=org.description,
             website=org.website,
             gst_number=org.gst_number
-        ))
-    return response
+        )
+        for org in orgs
+    ]
+
+    total_pages = (total_items + limit - 1) // limit
+
+    return PaginatedOrgResponse(
+        totalItems=total_items,
+        totalPages=total_pages,
+        currentPage=page,
+        pageSize=limit,
+        organizations=org_list
+    )
 
 
 async def update_org_service(org_id: str, org_data: OrgUpdate, db: AsyncSession) -> OrgResponse:

@@ -29,8 +29,10 @@ async def get_org_by_id(db: AsyncSession, org_id: str):
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     return result.scalars().first()
 
-async def get_all_org(db: AsyncSession):
-    result = await db.execute(select(Organization))
+async def get_all_org(db: AsyncSession, skip: int = 0, limit: int = 10):
+    result = await db.execute(
+        select(Organization).offset(skip).limit(limit)
+    )
     return result.scalars().all()
 
 async def create_org_in_db(

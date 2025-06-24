@@ -1,4 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from src.models.user import User  # Add this import
 from src.dao.user_dao import (
     get_user_by_email,
     get_user_by_id,
@@ -9,7 +11,7 @@ from src.dao.user_dao import (
     get_role_by_name,
     get_department_by_name
 )
-from src.schemas.user import UserCreate, UserResponse, UserUpdate
+from src.schemas.user import UserCreate, UserResponse, UserUpdate, PaginatedUserResponse
 from src.utils.auth import get_hash_password
 from src.utils.email_sender import send_credentials_email
 
@@ -70,19 +72,30 @@ async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
     )
 
 
-async def get_all_users_service(db: AsyncSession):
-    users = await get_all_users(db)
-    return [
-        UserResponse(
-            id=user.id,
-            email=user.email,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            role_type=user.role.role_type if user.role else None,
-            department_name=user.department.department_name if user.department else None
-        )
-        for user in users
-    ]
+async def get_all_users_service(db: AsyncSession, page: int, limit: int) -> PaginatedUserResponse:
+    total_items = await db.scalar(select(func.count()).select_from(User))
+    offset = (page - 1) * limit
+
+    users = await get_all_users(db, skip=offset, limit=limit)
+    total_pages = (total_items + limit - 1) // limit
+
+    return PaginatedUserResponse(
+        totalItems=total_items,
+        totalPages=total_pages,
+        currentPage=page,
+        pageSize=limit,
+        users=[
+            UserResponse(
+                id=user.id,
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                role_type=user.role.role_type if user.role else None,
+                department_name=user.department.department_name if user.department else None
+            )
+            for user in users
+        ]
+    )
 
 
 async def update_user_service(user_id: str, user_update: UserUpdate, db: AsyncSession) -> UserResponse:

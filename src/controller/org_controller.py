@@ -9,8 +9,9 @@ async def create_org_controller(org: OrgCreate, db: AsyncSession):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-async def get_all_org_controller(db: AsyncSession):
-    return await get_all_org_service(db)
+async def get_all_org_controller(db: AsyncSession, page: int, limit: int):
+    return await get_all_org_service(db, page, limit)
+
 
 async def update_org_controller(org_id: str, data: OrgUpdate, db: AsyncSession):
     try:

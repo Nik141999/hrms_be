@@ -22,10 +22,12 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     result = await db.execute(select(User).filter(User.id == user_id))
     return result.scalars().first()
 
-async def get_all_users(db: AsyncSession):
+async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
     result = await db.execute(
         select(User)
         .options(selectinload(User.role), selectinload(User.department))
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
 
