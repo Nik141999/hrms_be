@@ -38,9 +38,18 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
 async def get_all_users(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
-    return await get_all_users_controller(db, page, limit)
+    if hasattr(current_user, "org_name"):
+        org_id = current_user.id
+    elif hasattr(current_user, "organization_id"):
+        org_id = current_user.organization_id
+    else:
+        raise HTTPException(status_code=400, detail="Could not determine organization context")
+
+    return await get_all_users_controller(db, page, limit, org_id)
+
 
 
 

@@ -21,6 +21,7 @@ class Organization(Base):
     gst_number = Column(VARCHAR(40), nullable=True)
     is_active = Column(Boolean, default=True)
     otp = Column(Integer, nullable=True)
+    otp_expiry = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

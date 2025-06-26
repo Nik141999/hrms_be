@@ -12,6 +12,12 @@ async def create_org_controller(org: OrgCreate, db: AsyncSession):
 async def get_all_org_controller(db: AsyncSession, page: int, limit: int):
     return await get_all_org_service(db, page, limit)
 
+async def get_org_by_id_controller(org_id: str, db: AsyncSession):
+    try:
+        return await get_org_by_id_service(org_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 
 async def update_org_controller(org_id: str, data: OrgUpdate, db: AsyncSession):
     try:
@@ -30,4 +36,6 @@ async def verify_otp_controller(email: str, otp: str, db: AsyncSession):
         return await verify_org_otp_service(email, otp, db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+  
     

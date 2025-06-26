@@ -80,6 +80,25 @@ async def get_all_org_service(db: AsyncSession, page: int, limit: int) -> Pagina
         pageSize=limit,
         organizations=org_list
     )
+    
+async def get_org_by_id_service(org_id: str, db: AsyncSession) -> OrgResponse:
+    org = await get_org_by_id(db, org_id)
+    if not org:
+        raise ValueError("Organization not found")
+
+    return OrgResponse(
+        id=org.id,
+        org_name=org.org_name,
+        is_active=org.is_active,
+        created_at=org.created_at,
+        address=org.address,
+        phone_number=org.phone_number,
+        organization_type=org.organization_type.org_type if org.organization_type else None,
+        description=org.description,
+        website=org.website,
+        gst_number=org.gst_number
+    )
+    
 
 
 async def update_org_service(org_id: str, org_data: OrgUpdate, db: AsyncSession) -> OrgResponse:
@@ -117,17 +136,21 @@ async def verify_org_otp_service(email: str, otp: str, db: AsyncSession):
     if not org:
         raise ValueError("Organization not found")
 
-    print("📧 Email:", email)
-    print("🔒 OTP in DB:", org.otp)
-    print("✅ OTP submitted:", otp)
+    # ✅ Validate OTP presence and expiry
+    if not org.otp or not org.otp_expiry:
+        raise ValueError("OTP already used.")
+
+    if datetime.utcnow() > org.otp_expiry:
+        raise ValueError("OTP has expired.")
 
     if str(org.otp).strip() != str(otp).strip():
-        raise ValueError(f"Invalid OTP. Provided: {otp}, Expected: {org.otp}")
+        raise ValueError("Invalid OTP.")
 
+    # ✅ Clear OTP and activate organization
     org.otp = None
+    org.otp_expiry = None
     org.is_active = True
     await db.commit()
     await db.refresh(org)
 
     return {"detail": "OTP verified successfully"}
-

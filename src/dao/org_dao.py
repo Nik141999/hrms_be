@@ -4,6 +4,7 @@ from src.models.organization import Organization
 from src.models.orgatization_type import OrganizationType
 from src.models.role import Role
 from src.models.user import User
+from datetime import datetime, timedelta
 from src.utils.utils import generate_otp
 from src.utils.email_sender import send_otp_email
 
@@ -63,7 +64,7 @@ async def create_org_in_db(
 
     # ✅ Generate OTP before using
     otp = generate_otp()
-    # otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    otp_expiry = datetime.utcnow() + timedelta(minutes=5)
 
     # Create organization
     new_org = Organization(
@@ -78,6 +79,7 @@ async def create_org_in_db(
         website=website,
         gst_number=gst_number,
         otp=otp,
+        otp_expiry=otp_expiry
     )
 
     db.add(new_org)

@@ -22,14 +22,17 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     result = await db.execute(select(User).filter(User.id == user_id))
     return result.scalars().first()
 
-async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(
+async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10, org_id: str = None):
+    stmt = (
         select(User)
         .options(selectinload(User.role), selectinload(User.department))
+        .where(User.organization_id == org_id)
         .offset(skip)
         .limit(limit)
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
+
 
 async def create_user_in_db(
     db: AsyncSession,
