@@ -72,11 +72,13 @@ async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
     )
 
 
-async def get_all_users_service(db: AsyncSession, page: int, limit: int) -> PaginatedUserResponse:
-    total_items = await db.scalar(select(func.count()).select_from(User))
+async def get_all_users_service(db: AsyncSession, page: int, limit: int, org_id: str) -> PaginatedUserResponse:
+    total_items = await db.scalar(
+        select(func.count()).select_from(User).where(User.organization_id == org_id)
+    )
     offset = (page - 1) * limit
 
-    users = await get_all_users(db, skip=offset, limit=limit)
+    users = await get_all_users(db, skip=offset, limit=limit, org_id=org_id)
     total_pages = (total_items + limit - 1) // limit
 
     return PaginatedUserResponse(
@@ -96,6 +98,7 @@ async def get_all_users_service(db: AsyncSession, page: int, limit: int) -> Pagi
             for user in users
         ]
     )
+
 
 
 async def update_user_service(user_id: str, user_update: UserUpdate, db: AsyncSession) -> UserResponse:

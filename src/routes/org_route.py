@@ -19,6 +19,10 @@ async def get_organizations(
 ):
     return await get_all_org_controller(db, page, limit)
 
+@router.get("/organization/{org_id}", response_model=OrgResponse)
+async def get_organization_by_id(org_id: str, db: AsyncSession = Depends(get_db)):
+    return await get_org_by_id_controller(org_id, db)
+
 @router.put("/organization/{org_id}", response_model=OrgResponse)
 async def update_organization(org_id: str, org_data: OrgUpdate, db: AsyncSession = Depends(get_db)):
     return await update_org_controller(org_id, org_data, db)
