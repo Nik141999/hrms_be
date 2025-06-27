@@ -7,7 +7,7 @@ class LeaveCreate(BaseModel):
     description: Optional[str]
     start_date: date
     end_date: date
-    
+
 class LeaveUpdate(BaseModel):
     leave_type: str | None = None
     description: str | None = None
@@ -17,6 +17,7 @@ class LeaveUpdate(BaseModel):
 class LeaveResponse(BaseModel):
     id: str
     user_id: str
+    reviewer_id: Optional[str]  # <-- Include the assigned HR
     leave_type: str
     start_date: date
     end_date: date

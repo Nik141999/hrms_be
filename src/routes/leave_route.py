@@ -14,7 +14,7 @@ from src.models.user import User
 
 router = APIRouter(tags=["Leave"])
 
-@router.post("/leaves", response_model=LeaveResponse,dependencies=[Depends(PermissionChecker("/leaves", "create"))])
+@router.post("/leaves", response_model=LeaveResponse, dependencies=[Depends(PermissionChecker("/leaves", "create"))])
 async def create_leave(
     leave: LeaveCreate,
     db: AsyncSession = Depends(get_db),
@@ -22,16 +22,16 @@ async def create_leave(
 ):
     return await create_leave_controller(leave, db, current_user.id)
 
-@router.get("/leaves", response_model=PaginatedLeaveResponse,dependencies=[Depends(PermissionChecker("/leaves", "view"))])
+@router.get("/leaves", response_model=PaginatedLeaveResponse, dependencies=[Depends(PermissionChecker("/leaves", "view"))])
 async def get_all_leaves(
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await get_all_leaves_controller(db, page, limit)
+    return await get_all_leaves_controller(db, page, limit, current_user)
 
-@router.put("/leaves/{leave_id}", response_model=LeaveResponse,dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "edit"))])
+@router.put("/leaves/{leave_id}", response_model=LeaveResponse, dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "edit"))])
 async def update_leave(
     leave_id: str,
     leave: LeaveUpdate,
@@ -40,7 +40,7 @@ async def update_leave(
 ):
     return await update_leave_controller(leave_id, leave, db, current_user.id)
 
-@router.delete("/leaves/{leave_id}",dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "delete"))])
+@router.delete("/leaves/{leave_id}", dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "delete"))])
 async def delete_leave(
     leave_id: str,
     db: AsyncSession = Depends(get_db),

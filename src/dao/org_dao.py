@@ -14,9 +14,7 @@ async def get_role_by_name(db: AsyncSession, role_type: str):
 
 
 async def get_org_by_email(db: AsyncSession, email: str):
-    result = await db.execute(
-        select(User).where(User.email == email)
-    )
+    result = await db.execute(select(Organization).filter(Organization.email.ilike(email)))
     return result.scalars().first()
 
 async def get_org_type_by_name(db: AsyncSession, org_type_name: str):

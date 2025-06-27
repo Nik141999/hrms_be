@@ -1,12 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from src.models.leave import Leave
 from sqlalchemy import func
+from src.models.leave import Leave
 from src.schemas.leave_schema import LeaveCreate, LeaveUpdate
 
-async def create_leave_in_db(db: AsyncSession, leave: LeaveCreate, user_id: str):
+async def create_leave_in_db(db: AsyncSession, leave: LeaveCreate, user_id: str, reviewer_id: str):
     new_leave = Leave(
         user_id=user_id,
+        reviewer_id=reviewer_id,
         leave_type=leave.leave_type,
         description=leave.description,
         start_date=leave.start_date,
