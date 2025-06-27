@@ -15,7 +15,7 @@ async def get_department_by_name(db: AsyncSession, department_name: str):
     return result.scalars().first()
 
 async def get_user_by_email(db: AsyncSession, email: str):
-    result = await db.execute(select(User).filter(User.email == email))
+    result = await db.execute(select(User).filter(User.email.ilike(email)))
     return result.scalars().first()
 
 async def get_user_by_id(db: AsyncSession, user_id: str):

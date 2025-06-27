@@ -11,6 +11,7 @@ from src.dao.user_dao import (
     get_role_by_name,
     get_department_by_name
 )
+from src.dao.org_dao import get_org_by_email
 from src.schemas.user import UserCreate, UserResponse, UserUpdate, PaginatedUserResponse
 from src.utils.auth import get_hash_password
 from src.utils.email_sender import send_credentials_email
@@ -20,6 +21,10 @@ async def create_user_service(user: UserCreate, db: AsyncSession, org_id: str) -
     existing_user = await get_user_by_email(db, user.email)
     if existing_user:
         raise ValueError("Email already registered")
+    
+    existing_org = await get_org_by_email(db, user.email)
+    if existing_org:
+        raise ValueError("Email already registered as an organization")
 
     role = await get_role_by_name(db, user.role_type)
     if not role:

@@ -2,12 +2,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 from src.dao.org_dao import *
+from src.dao.user_dao import get_user_by_email
 from src.schemas.org_schema import OrgCreate, OrgUpdate, OrgResponse, PaginatedOrgResponse
 from src.utils.auth import get_hash_password
 
 async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
     if await get_org_by_email(db, org.email):
         raise ValueError("Email already registered")
+    
+    if await get_user_by_email(db, org.email):
+        raise ValueError("Email already registered as a user")
 
     role = await get_role_by_name(db, org.role_type)
     if not role:
