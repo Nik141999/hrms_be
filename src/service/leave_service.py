@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from fastapi import HTTPException, status
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.enums.leave_enums import LeaveStatus
 
 from src.models.user import User
 from src.models.role import Role
@@ -100,3 +101,30 @@ async def delete_leave_service(leave_id: int, db: AsyncSession, user_id: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave not found")
     await delete_leave_in_db(db, existing_leave)
     return {"message": "Leave deleted successfully"}
+
+async def update_leave_status_service(leave_id: str, status: str, db: AsyncSession, current_user: User):
+    if current_user.role.role_type.lower() != "hr":
+        raise HTTPException(status_code=403, detail="Only HR can update leave status.")
+
+    result = await db.execute(select(Leave).where(Leave.id == leave_id))
+    leave = result.scalar_one_or_none()
+
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave not found")
+
+    if leave.reviewer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
+
+    if leave.status != LeaveStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Only pending leaves can be updated.")
+
+    try:
+        new_status = LeaveStatus(status.upper())  # 🧠 fix is here
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid status. Use: ACCEPTED, REJECTED")
+
+    leave.status = new_status
+    await db.commit()
+    await db.refresh(leave)
+
+    return LeaveResponse.model_validate(leave)
