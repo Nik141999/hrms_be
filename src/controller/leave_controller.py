@@ -6,6 +6,7 @@ from src.service.leave_service import (
     get_all_leaves_service,
     update_leave_service,
     delete_leave_service,
+    update_leave_status_service
 )
 from src.models.user import User
 
@@ -23,3 +24,7 @@ async def update_leave_controller(leave_id: str, leave: LeaveUpdate, db: AsyncSe
 
 async def delete_leave_controller(leave_id: str, db: AsyncSession, user_id: str):
     return await delete_leave_service(leave_id, db, user_id)
+
+async def update_leave_status_controller(leave_id: str, status: str, db: AsyncSession, current_user: User):
+    return await update_leave_status_service(leave_id, status, db, current_user)
+

@@ -58,7 +58,10 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     return False
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -73,15 +76,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     except JWTError:
         raise credentials_exception
 
-    # Fetch user
+    # ✅ Eager load role
     result = await db.execute(
-        select(User).where(User.email == email)
+        select(User).options(selectinload(User.role)).where(User.email == email)
     )
     user = result.scalars().first()
     if user:
         return user
 
-    # Fallback to organization
+    # fallback to organization
     result = await db.execute(
         select(Organization).where(Organization.email == email)
     )
@@ -90,4 +93,3 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         return organization
 
     raise credentials_exception
-
