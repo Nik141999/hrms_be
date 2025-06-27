@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.utils.auth import get_current_user
 from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse
@@ -8,6 +8,7 @@ from src.controller.leave_controller import (
     get_all_leaves_controller,
     update_leave_controller,
     delete_leave_controller,
+    update_leave_status_controller
 )
 from src.database import get_db
 from src.models.user import User
@@ -47,3 +48,12 @@ async def delete_leave(
     current_user: User = Depends(get_current_user),
 ):
     return await delete_leave_controller(leave_id, db, current_user.id)
+
+@router.patch("/leaves/{leave_id}/status", response_model=LeaveResponse)
+async def update_leave_status(
+    leave_id: str,
+    status: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await update_leave_status_controller(leave_id, status, db, current_user)
