@@ -9,7 +9,7 @@ from src.schemas.user import (
 )
 from src.models.user import User
 from src.models.organization import Organization
-from src.utils.auth import authenticate_user, create_access_token
+from src.utils.auth import authenticate_user, create_access_token, create_refresh_token
 from src.database import get_db
 
 router = APIRouter(tags=["authentication"])
@@ -32,14 +32,14 @@ async def login_user(
         )
 
     access_token_expires = timedelta(minutes=960)
+    refresh_token_expires = timedelta(days=30)
 
     # User login
     if isinstance(authenticated, User):
-        # Ensure role and department relationships are loaded
         role_type = authenticated.role.role_type if authenticated.role else None
         department_name = authenticated.department.department_name if authenticated.department else None
 
-        access_token = create_access_token(
+        access_token = await create_access_token(
             data={
                 "sub": authenticated.email,
                 "role_type": role_type,
@@ -47,9 +47,18 @@ async def login_user(
             },
             expires_delta=access_token_expires
         )
+        refresh_token, _ = await create_refresh_token(
+            data={
+                "sub": authenticated.email,
+                "role_type": role_type,
+                "org_id": authenticated.organization_id,
+            },
+            expires_delta=refresh_token_expires
+        )
 
         response_data = UserLoginResponse(
             access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             role_type=role_type,
             user=UserResponse(
@@ -67,7 +76,7 @@ async def login_user(
     elif isinstance(authenticated, Organization):
         role_type = authenticated.role.role_type if authenticated.role else "Organization"
 
-        access_token = create_access_token(
+        access_token = await create_access_token(
             data={
                 "sub": authenticated.email,
                 "role_type": role_type,
@@ -75,9 +84,18 @@ async def login_user(
             },
             expires_delta=access_token_expires
         )
+        refresh_token, _ = await create_refresh_token(
+            data={
+                "sub": authenticated.email,
+                "role_type": role_type,
+                "org_id": authenticated.id,
+            },
+            expires_delta=refresh_token_expires
+        )
 
         response_data = OrgLoginResponse(
             access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             role_type=role_type,
             organization=OrgResponse(

@@ -45,12 +45,14 @@ class OrgResponse(BaseModel):
 
 class UserLoginResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
     role_type: str
     user: UserResponse
 
 class OrgLoginResponse(BaseModel):
     access_token: str
+    refresh_token: str 
     token_type: str
     role_type: str
     organization: OrgResponse

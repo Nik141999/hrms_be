@@ -9,16 +9,19 @@ from src.utils.auth import get_hash_password
 async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
     if await get_org_by_email(db, org.email):
         raise ValueError("Email already registered")
-    
+
     if await get_user_by_email(db, org.email):
         raise ValueError("Email already registered as a user")
 
-    role = await get_role_by_name(db, org.role_type)
+    # ✅ Use default if role_type is None
+    role_type = org.role_type or "SuperAdmin"
+
+    role = await get_role_by_name(db, role_type)
     if not role:
         raise ValueError("Invalid role_type")
 
-    org_type = await get_org_type_by_name(db, org.organization_type)
-    if not org_type:
+    org_type = await get_org_type_by_name(db, org.organization_type) if org.organization_type else None
+    if org.organization_type and not org_type:
         raise ValueError("Invalid organization_type")
 
     hashed_password = get_hash_password(org.password)
@@ -31,7 +34,7 @@ async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
         role_id=role.id,
         address=org.address,
         phone_number=org.phone_number,
-        org_type_id=org_type.id,
+        org_type_id=org_type.id if org_type else None,
         description=org.description,
         website=org.website,
         gst_number=org.gst_number,
@@ -40,17 +43,19 @@ async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
     await db.refresh(new_org, attribute_names=["organization_type"])
 
     return OrgResponse(
-        id=new_org.id,
-        org_name=new_org.org_name,
-        is_active=new_org.is_active,
-        created_at=new_org.created_at,
-        address=new_org.address,
-        phone_number=new_org.phone_number,
-        organization_type=new_org.organization_type.org_type if new_org.organization_type else None,
-        description=new_org.description,
-        website=new_org.website,
-        gst_number=new_org.gst_number,
-    )
+    id=new_org.id,
+    org_name=new_org.org_name,
+    email=new_org.email,                       
+    role_type=new_org.role.role_type if new_org.role else None,  
+    address=new_org.address,
+    phone_number=new_org.phone_number,
+    organization_type=new_org.organization_type.org_type if new_org.organization_type else None,
+    description=new_org.description,
+    website=new_org.website,
+    gst_number=new_org.gst_number,
+)
+
+
 
 
 async def get_all_org_service(db: AsyncSession, page: int, limit: int) -> PaginatedOrgResponse:
@@ -60,20 +65,20 @@ async def get_all_org_service(db: AsyncSession, page: int, limit: int) -> Pagina
     orgs = await get_all_org(db, skip=offset, limit=limit)
 
     org_list = [
-        OrgResponse(
-            id=org.id,
-            org_name=org.org_name,
-            is_active=org.is_active,
-            created_at=org.created_at,
-            address=org.address,
-            phone_number=org.phone_number,
-            organization_type=org.organization_type.org_type if org.organization_type else None,
-            description=org.description,
-            website=org.website,
-            gst_number=org.gst_number
-        )
-        for org in orgs
-    ]
+    OrgResponse(
+        id=org.id,
+        org_name=org.org_name,
+        email=org.email,  
+        role_type=org.role.role_type if org.role else None, 
+        address=org.address,
+        phone_number=org.phone_number,
+        organization_type=org.organization_type.org_type if org.organization_type else None,
+        description=org.description,
+        website=org.website,
+        gst_number=org.gst_number
+    )
+    for org in orgs
+]
 
     total_pages = (total_items + limit - 1) // limit
 
