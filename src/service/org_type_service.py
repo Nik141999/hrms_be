@@ -8,9 +8,9 @@ from src.dao.org_type_dao import (
 async def create_organization_type_service(db: AsyncSession, org_type: str):
     return await create_organization_type_dao(db, org_type)
 
-async def get_all_organization_types_service(db: AsyncSession, page: int, limit: int):
+async def get_all_organization_types_service(db: AsyncSession, page: int, limit: int, search: str = None):
     offset = (page - 1) * limit
-    total_items, items = await get_all_organization_types_dao(db, offset, limit)
+    total_items, items = await get_all_organization_types_dao(db, offset, limit, search)
 
     return {
         "totalItems": total_items,

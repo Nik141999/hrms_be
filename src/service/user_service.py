@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from src.models.user import User  # Add this import
 from src.dao.user_dao import (
     get_user_by_email,
@@ -77,13 +77,23 @@ async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
     )
 
 
-async def get_all_users_service(db: AsyncSession, page: int, limit: int, org_id: str) -> PaginatedUserResponse:
-    total_items = await db.scalar(
-        select(func.count()).select_from(User).where(User.organization_id == org_id)
-    )
+async def get_all_users_service(db: AsyncSession, page: int, limit: int, org_id: str, search: str = None) -> PaginatedUserResponse:
+    base_query = select(func.count()).select_from(User).where(User.organization_id == org_id)
+
+    if search:
+        search_pattern = f"%{search}%"
+        base_query = base_query.where(
+            or_(
+                User.first_name.ilike(search_pattern),
+                User.last_name.ilike(search_pattern),
+                User.email.ilike(search_pattern)
+            )
+        )
+
+    total_items = await db.scalar(base_query)
     offset = (page - 1) * limit
 
-    users = await get_all_users(db, skip=offset, limit=limit, org_id=org_id)
+    users = await get_all_users(db, skip=offset, limit=limit, org_id=org_id, search=search)
     total_pages = (total_items + limit - 1) // limit
 
     return PaginatedUserResponse(
@@ -103,7 +113,6 @@ async def get_all_users_service(db: AsyncSession, page: int, limit: int, org_id:
             for user in users
         ]
     )
-
 
 
 async def update_user_service(user_id: str, user_update: UserUpdate, db: AsyncSession) -> UserResponse:

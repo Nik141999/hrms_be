@@ -21,10 +21,8 @@ async def get_user_controller(user_id: str, db: AsyncSession):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-async def get_all_users_controller(db: AsyncSession, page: int, limit: int, org_id: str):
-    return await get_all_users_service(db, page, limit, org_id)
-
-
+async def get_all_users_controller(db: AsyncSession, page: int, limit: int, org_id: str, search: str = None):
+    return await get_all_users_service(db, page, limit, org_id, search)
 
 async def update_user_controller(user_id: str, user_update: UserUpdate, db: AsyncSession):
     try:

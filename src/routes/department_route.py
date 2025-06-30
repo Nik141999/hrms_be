@@ -23,9 +23,11 @@ async def create_department(dept: DepartmentCreate, db: AsyncSession = Depends(g
 async def get_departments(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    search: str = Query(None, description="Search by department type name")
+
 ):
-    return await get_all_dept_controller(db, page, limit)
+    return await get_all_dept_controller(db, page, limit,search)
 
 @router.put("/department/{dept_id}", response_model=DepartmentResponse,
             dependencies=[Depends(PermissionChecker("/department/{dept_id}", "edit"))])

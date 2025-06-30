@@ -5,8 +5,8 @@ from src.service.org_type_service import *
 async def create_organization_type_controller(db: AsyncSession, org_type: str):
     return await create_organization_type_service(db, org_type)
 
-async def get_all_organization_types_controller(db: AsyncSession, page: int, limit: int):
-    return await get_all_organization_types_service(db, page, limit)
+async def get_all_organization_types_controller(db: AsyncSession, page: int, limit: int, search: str = None):
+    return await get_all_organization_types_service(db, page, limit, search)
 
 async def get_organization_type_by_id_controller(db: AsyncSession, org_type_id: str):
     org_type = await get_organization_type_by_id_service(db, org_type_id)

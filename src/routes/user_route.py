@@ -38,6 +38,7 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)):
 async def get_all_users(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    search: str = Query(None, description="Search by name or email"),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -48,7 +49,7 @@ async def get_all_users(
     else:
         raise HTTPException(status_code=400, detail="Could not determine organization context")
 
-    return await get_all_users_controller(db, page, limit, org_id)
+    return await get_all_users_controller(db, page, limit, org_id, search)
 
 
 

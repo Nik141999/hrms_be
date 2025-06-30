@@ -58,27 +58,38 @@ async def create_org_service(org: OrgCreate, db: AsyncSession) -> OrgResponse:
 
 
 
-async def get_all_org_service(db: AsyncSession, page: int, limit: int) -> PaginatedOrgResponse:
-    total_items = await db.scalar(select(func.count()).select_from(Organization))
+async def get_all_org_service(db: AsyncSession, page: int, limit: int, search: str = None) -> PaginatedOrgResponse:
+    base_query = select(func.count()).select_from(Organization)
+
+    if search:
+        search_pattern = f"%{search}%"
+        base_query = base_query.where(
+            or_(
+                Organization.org_name.ilike(search_pattern),
+                Organization.email.ilike(search_pattern)
+            )
+        )
+
+    total_items = await db.scalar(base_query)
     offset = (page - 1) * limit
 
-    orgs = await get_all_org(db, skip=offset, limit=limit)
+    orgs = await get_all_org(db, skip=offset, limit=limit, search=search)
 
     org_list = [
-    OrgResponse(
-        id=org.id,
-        org_name=org.org_name,
-        email=org.email,  
-        role_type=org.role.role_type if org.role else None, 
-        address=org.address,
-        phone_number=org.phone_number,
-        organization_type=org.organization_type.org_type if org.organization_type else None,
-        description=org.description,
-        website=org.website,
-        gst_number=org.gst_number
-    )
-    for org in orgs
-]
+        OrgResponse(
+            id=org.id,
+            org_name=org.org_name,
+            email=org.email,
+            role_type=org.role.role_type if org.role else None,
+            address=org.address,
+            phone_number=org.phone_number,
+            organization_type=org.organization_type.org_type if org.organization_type else None,
+            description=org.description,
+            website=org.website,
+            gst_number=org.gst_number
+        )
+        for org in orgs
+    ]
 
     total_pages = (total_items + limit - 1) // limit
 
