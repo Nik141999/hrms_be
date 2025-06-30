@@ -1,7 +1,7 @@
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.models.user import User
 from sqlalchemy.orm import selectinload
+from src.models.user import User
 from src.models.role import Role
 from src.models.department import Department
 from src.schemas.user import UserUpdate
@@ -22,17 +22,26 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     result = await db.execute(select(User).filter(User.id == user_id))
     return result.scalars().first()
 
-async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10, org_id: str = None):
+async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10, org_id: str = None, search: str = None):
     stmt = (
         select(User)
         .options(selectinload(User.role), selectinload(User.department))
         .where(User.organization_id == org_id)
-        .offset(skip)
-        .limit(limit)
     )
+
+    if search:
+        search_pattern = f"%{search}%"
+        stmt = stmt.where(
+            or_(
+                User.first_name.ilike(search_pattern),
+                User.last_name.ilike(search_pattern),
+                User.email.ilike(search_pattern)
+            )
+        )
+
+    stmt = stmt.offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
-
 
 async def create_user_in_db(
     db: AsyncSession,
@@ -56,9 +65,7 @@ async def create_user_in_db(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    print(f"New user created with department_id: {new_user.department_id}")
     return new_user
-
 
 async def update_user_in_db(db: AsyncSession, user_id: str, new_data: UserUpdate, role=None, department=None):
     user = await get_user_by_id(db, user_id)
@@ -79,7 +86,6 @@ async def update_user_in_db(db: AsyncSession, user_id: str, new_data: UserUpdate
     await db.commit()
     await db.refresh(user)
     return user
-
 
 async def delete_user_from_db(db: AsyncSession, user_id: str):
     user = await get_user_by_id(db, user_id)

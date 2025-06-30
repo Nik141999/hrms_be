@@ -15,9 +15,11 @@ async def create_organization(org: OrgCreate, db: AsyncSession = Depends(get_db)
 async def get_organizations(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1),
+    search: str = Query(None, description="Search by org name or email"),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_all_org_controller(db, page, limit)
+    return await get_all_org_controller(db, page, limit, search)
+
 
 @router.get("/organization/{org_id}", response_model=OrgResponse)
 async def get_organization_by_id(org_id: str, db: AsyncSession = Depends(get_db)):

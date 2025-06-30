@@ -19,8 +19,10 @@ async def get_all_organization_types(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1),
+    search: str = Query(None, description="Search by organization type name")
 ):
-    return await get_all_organization_types_controller(db, page, limit)
+    return await get_all_organization_types_controller(db, page, limit, search)
+
 
 
 @router.get("/{org_type_id}", response_model=OrganizationTypeResponse,

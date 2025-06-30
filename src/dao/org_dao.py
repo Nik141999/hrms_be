@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.organization import Organization
 from src.models.orgatization_type import OrganizationType
@@ -28,10 +28,20 @@ async def get_org_by_id(db: AsyncSession, org_id: str):
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     return result.scalars().first()
 
-async def get_all_org(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(
-        select(Organization).offset(skip).limit(limit)
-    )
+async def get_all_org(db: AsyncSession, skip: int = 0, limit: int = 10, search: str = None):
+    stmt = select(Organization)
+
+    if search:
+        search_pattern = f"%{search}%"
+        stmt = stmt.where(
+            or_(
+                Organization.org_name.ilike(search_pattern),
+                Organization.email.ilike(search_pattern)
+            )
+        )
+
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 async def create_org_in_db(

@@ -10,13 +10,24 @@ async def create_department_dao(dept_data, db):
     await db.refresh(new_dept)
     return new_dept
 
-async def get_total_departments_count(db):
-    result = await db.execute(select(func.count()).select_from(Department))
-    return result.scalar_one()
+async def get_paginated_departments_dao(db, skip: int, limit: int, search: str = None):
+    stmt = select(Department)
 
-async def get_paginated_departments_dao(db, skip: int, limit: int):
-    result = await db.execute(select(Department).offset(skip).limit(limit))
+    if search:
+        stmt = stmt.where(Department.department_name.ilike(f"%{search}%"))
+
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
+
+async def get_total_departments_count(db, search: str = None):
+    stmt = select(func.count()).select_from(Department)
+
+    if search:
+        stmt = stmt.where(Department.department_name.ilike(f"%{search}%"))
+
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 async def get_all_departments_dao(db):
     result = await db.execute(select(Department))
