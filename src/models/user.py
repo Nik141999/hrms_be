@@ -48,5 +48,12 @@ class User(Base):
     back_populates="user",
     lazy="selectin",
     )
+    
+    managed_leaves = relationship(
+        "Leave",
+        back_populates="manager",
+        foreign_keys="Leave.manager_id",
+        lazy="selectin"
+    )
 
     

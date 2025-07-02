@@ -15,7 +15,8 @@ from src.models.user import User
 
 router = APIRouter(tags=["Leave"])
 
-@router.post("/leaves", response_model=LeaveResponse, dependencies=[Depends(PermissionChecker("/leaves", "create"))])
+
+@router.post("/leaves", response_model=LeaveResponse)
 async def create_leave(
     leave: LeaveCreate,
     db: AsyncSession = Depends(get_db),
