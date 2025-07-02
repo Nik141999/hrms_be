@@ -19,6 +19,7 @@ class LeaveResponse(BaseModel):
     id: str
     user_id: str
     reviewer_id: Optional[str]
+    manager_id: Optional[str]
     leave_type: str
     start_date: date
     end_date: date

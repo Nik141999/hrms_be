@@ -22,7 +22,6 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
     if leave.start_date < date.today():
         raise ValueError("Start date cannot be in the past.")
 
-    # Step 1: Get the current user to find their department
     user_result = await db.execute(select(User).where(User.id == user_id))
     current_user = user_result.scalar_one_or_none()
 
@@ -30,48 +29,81 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
         raise HTTPException(status_code=400, detail="User or user's department not found")
 
     department_id = current_user.department_id
+    role_type = current_user.role.role_type.lower()
 
-    # Step 2: Get HRs in the same department
-    hr_result = await db.execute(
-        select(User)
-        .join(Role)
-        .where(
-            Role.role_type == "hr",
-            User.department_id == department_id
+    reviewer_id = None
+    manager_id = None
+
+    # If employee, assign to least busy HR and department manager
+    if role_type == "employee":
+        # Get HRs in the department
+        hr_result = await db.execute(
+            select(User)
+            .join(Role)
+            .where(Role.role_type == "hr", User.department_id == department_id)
         )
+        hr_users = hr_result.scalars().all()
+
+        if not hr_users:
+            raise HTTPException(status_code=404, detail="No HR found in your department")
+
+        # Pick HR with fewest leaves
+        hr_with_counts = []
+        for hr in hr_users:
+            count_result = await db.execute(
+                select(func.count()).select_from(Leave).where(Leave.reviewer_id == hr.id)
+            )
+            count = count_result.scalar_one()
+            hr_with_counts.append((hr, count))
+
+        least_busy_hr = min(hr_with_counts, key=lambda x: x[1])[0]
+        reviewer_id = least_busy_hr.id
+
+    # HR creating a leave (or employee)—assign manager
+    if role_type in ["employee", "hr"]:
+        mgr_result = await db.execute(
+            select(User)
+            .join(Role)
+            .where(Role.role_type == "manager", User.department_id == department_id)
+        )
+        manager = mgr_result.scalars().first()
+        if not manager:
+            raise HTTPException(status_code=404, detail="No Manager found in your department")
+        manager_id = manager.id
+
+    # Optional: handle Admin creating leave (if needed)
+    if role_type == "admin":
+        raise HTTPException(status_code=403, detail="Admins cannot apply for leaves.")
+
+    # Create leave with selected reviewer_id (can be None) and manager_id
+    new_leave = await create_leave_in_db(
+        db, leave, user_id, reviewer_id=reviewer_id, manager_id=manager_id
     )
-    hr_users = hr_result.scalars().all()
-
-    if not hr_users:
-        raise HTTPException(status_code=404, detail="No HR found in your department")
-
-    # Step 3: Find the HR with the fewest assigned leaves
-    hr_with_counts = []
-    for hr in hr_users:
-        count_result = await db.execute(
-            select(func.count()).select_from(Leave).where(Leave.reviewer_id == hr.id)
-        )
-        count = count_result.scalar_one()
-        hr_with_counts.append((hr, count))
-
-    least_busy_hr = min(hr_with_counts, key=lambda x: x[1])[0]
-
-    # Step 4: Create the leave and assign the HR as reviewer
-    new_leave = await create_leave_in_db(db, leave, user_id, reviewer_id=least_busy_hr.id)
-
     return LeaveResponse.model_validate(new_leave)
 
 async def get_all_leaves_service(db: AsyncSession, page: int, limit: int, current_user: User) -> PaginatedLeaveResponse:
     skip = (page - 1) * limit
-
     role_type = current_user.role.role_type.lower()
 
     if role_type == "hr":
+        # HR sees only the leaves they are assigned to review
         query = select(Leave).where(Leave.reviewer_id == current_user.id)
         count_query = select(func.count()).select_from(Leave).where(Leave.reviewer_id == current_user.id)
-    else:
+
+    elif role_type == "manager":
+        # Manager sees only the leaves assigned to them as manager
+        query = select(Leave).where(Leave.manager_id == current_user.id)
+        count_query = select(func.count()).select_from(Leave).where(Leave.manager_id == current_user.id)
+        
+    elif role_type == "admin":
+        # Admin sees all leaves
         query = select(Leave)
-        count_query = select(func.count()).select_from(Leave)
+        count_query = select(func.count()).select_from(Leave)    
+
+    else:
+       query = select(Leave).where(Leave.user_id == current_user.id)
+       count_query = select(func.count()).select_from(Leave).where(Leave.user_id == current_user.id)
+
 
     leaves_result = await db.execute(query.offset(skip).limit(limit))
     count_result = await db.execute(count_query)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey,Integer
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.mysql import VARCHAR
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -24,16 +24,11 @@ class Organization(Base):
     otp_expiry = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     role_id = Column(VARCHAR(512), ForeignKey("roles.id"), nullable=False)
-    
     org_type_id = Column(VARCHAR(512), ForeignKey("organization_type.id"), nullable=True)
-    
+
     user = relationship("User", back_populates="organization", lazy="selectin")
     role = relationship("Role", back_populates="organizations", lazy="selectin")
-    organization_type = relationship(
-        OrganizationType,  
-        back_populates="organizations",
-        lazy="selectin"
-    )
-
+    organization_type = relationship("OrganizationType", back_populates="organizations", lazy="selectin")
+    departments = relationship("Department", back_populates="organization", lazy="selectin")
