@@ -18,41 +18,57 @@ from src.utils.email_sender import send_credentials_email
 
 
 async def create_user_service(user: UserCreate, db: AsyncSession, org_id: str) -> UserResponse:
+    # Check if user already exists
     existing_user = await get_user_by_email(db, user.email)
     if existing_user:
         raise ValueError("Email already registered")
-    
+
+    # Check if email is already used for an organization
     existing_org = await get_org_by_email(db, user.email)
     if existing_org:
         raise ValueError("Email already registered as an organization")
 
+    # Fetch role
     role = await get_role_by_name(db, user.role_type)
     if not role:
         raise ValueError("Invalid role_type")
 
-    department = await get_department_by_name(db, user.department_name)
-    if not department:
-        raise ValueError("Invalid department")
+    # Normalize role type
+    role_type = role.role_type.lower()
 
+    # Only validate department if role is not 'admin'
+    department = None
+    if role_type != "admin":
+        department = await get_department_by_name(db, user.department_name)
+        if not department:
+            raise ValueError("Invalid department")
+
+    # Hash the password
     hashed_password = get_hash_password(user.password)
 
+    # Create user
     new_user = await create_user_in_db(
-        db,
+        db=db,
         first_name=user.first_name,
         last_name=user.last_name,
         email=user.email,
         hashed_password=hashed_password,
         role_id=role.id,
-        department_id=department.id,
+        department_id=department.id if department else None,
         organization_id=org_id
     )
 
-    # ✅ Refresh and load role and department relationships
+    # Refresh user to get related role and department
     await db.refresh(new_user, attribute_names=["role", "department"])
 
-    # Send credentials email
-    send_credentials_email(to_email=user.email, user_email=user.email, password=user.password)
+    # Send credentials via email
+    send_credentials_email(
+        to_email=user.email,
+        user_email=user.email,
+        password=user.password
+    )
 
+    # Return response
     return UserResponse(
         id=new_user.id,
         email=new_user.email,
@@ -61,7 +77,6 @@ async def create_user_service(user: UserCreate, db: AsyncSession, org_id: str) -
         role_type=new_user.role.role_type if new_user.role else None,
         department_name=new_user.department.department_name if new_user.department else None
     )
-
 
 async def get_user_service(user_id: str, db: AsyncSession) -> UserResponse:
     user = await get_user_by_id(db, user_id)

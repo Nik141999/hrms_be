@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, model_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -9,10 +9,16 @@ class UserLogin(BaseModel):
 class UserCreate(BaseModel):
     first_name: str
     last_name: str
-    email: EmailStr
+    email: str
     password: str
     role_type: str
-    department_name: str
+    department_name: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_department_for_non_admin(self) -> 'UserCreate':
+        if self.role_type.lower() != "admin" and not self.department_name:
+            raise ValueError("department_name is required for non-admin users")
+        return self
 
 class UserResponse(BaseModel):
     id: str
