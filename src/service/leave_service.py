@@ -10,7 +10,6 @@ from src.models.role import Role
 from src.models.leave import Leave
 from src.dao.leave_dao import (
     create_leave_in_db,
-    get_all_leaves_by_user_id,
     get_leave_by_id_and_user,
     update_leave_in_db,
     delete_leave_in_db,
@@ -134,9 +133,8 @@ async def delete_leave_service(leave_id: int, db: AsyncSession, user_id: str):
     await delete_leave_in_db(db, existing_leave)
     return {"message": "Leave deleted successfully"}
 
-async def update_leave_status_service(leave_id: str, status: str, db: AsyncSession, current_user: User):
-    if current_user.role.role_type.lower() != "hr":
-        raise HTTPException(status_code=403, detail="Only HR can update leave status.")
+async def update_leave_status_service(leave_id: str, status: str, db, current_user: User):
+    role = current_user.role.role_type.lower()
 
     result = await db.execute(select(Leave).where(Leave.id == leave_id))
     leave = result.scalar_one_or_none()
@@ -144,19 +142,32 @@ async def update_leave_status_service(leave_id: str, status: str, db: AsyncSessi
     if not leave:
         raise HTTPException(status_code=404, detail="Leave not found")
 
-    if leave.reviewer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
+    if role not in ["hr", "manager"]:
+        raise HTTPException(status_code=403, detail="Only HR or Manager can update leave status")
 
-    if leave.status != LeaveStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Only pending leaves can be updated.")
+    if role == "hr" and leave.reviewer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
+    if role == "manager" and leave.manager_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not assigned as manager for this leave.")
 
     try:
-        new_status = LeaveStatus(status.upper())  # 🧠 fix is here
+        new_status = LeaveStatus(status.upper())
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid status. Use: ACCEPTED, REJECTED")
+        raise HTTPException(status_code=400, detail="Invalid status. Use: ACCEPTED or REJECTED")
 
-    leave.status = new_status
+    if role == "hr":
+        leave.status = new_status
+    elif role == "manager":
+        leave.manager_status = new_status
+
+    # Final decision
+    if leave.status == LeaveStatus.REJECTED or leave.manager_status == LeaveStatus.REJECTED:
+        leave.status = LeaveStatus.REJECTED
+    elif leave.status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:
+        leave.status = LeaveStatus.ACCEPTED
+    else:
+        leave.status = LeaveStatus.PENDING
+
     await db.commit()
     await db.refresh(leave)
-
     return LeaveResponse.model_validate(leave)
