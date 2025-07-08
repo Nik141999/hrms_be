@@ -21,63 +21,65 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
     if leave.start_date < date.today():
         raise ValueError("Start date cannot be in the past.")
 
+    # Fetch current user
     user_result = await db.execute(select(User).where(User.id == user_id))
     current_user = user_result.scalar_one_or_none()
 
-    if not current_user or not current_user.department_id:
-        raise HTTPException(status_code=400, detail="User or user's department not found")
+    if not current_user or not current_user.department_id or not current_user.organization_id:
+        raise HTTPException(status_code=400, detail="User, department, or organization not found")
 
     department_id = current_user.department_id
+    organization_id = current_user.organization_id
     role_type = current_user.role.role_type.lower()
+
+    # Admins cannot apply for leave
+    if role_type == "admin":
+        raise HTTPException(status_code=403, detail="Admins cannot apply for leaves.")
 
     reviewer_id = None
     manager_id = None
 
-    # If employee, assign to least busy HR and department manager
+    # Assign HR from same department and same organization
     if role_type == "employee":
-        # Get HRs in the department
         hr_result = await db.execute(
             select(User)
             .join(Role)
-            .where(Role.role_type == "hr", User.department_id == department_id)
-        )
-        hr_users = hr_result.scalars().all()
-
-        if not hr_users:
-            raise HTTPException(status_code=404, detail="No HR found in your department")
-
-        # Pick HR with fewest leaves
-        hr_with_counts = []
-        for hr in hr_users:
-            count_result = await db.execute(
-                select(func.count()).select_from(Leave).where(Leave.reviewer_id == hr.id)
+            .where(
+                Role.role_type == "hr",
+                User.department_id == department_id,
+                User.organization_id == organization_id
             )
-            count = count_result.scalar_one()
-            hr_with_counts.append((hr, count))
+        )
+        hr_user = hr_result.scalars().first()
 
-        least_busy_hr = min(hr_with_counts, key=lambda x: x[1])[0]
-        reviewer_id = least_busy_hr.id
+        if not hr_user:
+            raise HTTPException(status_code=404, detail="No HR found in your department and organization")
 
-    # HR creating a leave (or employee)—assign manager
+        reviewer_id = hr_user.id
+
+    # Assign Manager from same department and same organization
     if role_type in ["employee", "hr"]:
         mgr_result = await db.execute(
             select(User)
             .join(Role)
-            .where(Role.role_type == "manager", User.department_id == department_id)
+            .where(
+                Role.role_type == "manager",
+                User.department_id == department_id,
+                User.organization_id == organization_id
+            )
         )
         manager = mgr_result.scalars().first()
+
         if not manager:
-            raise HTTPException(status_code=404, detail="No Manager found in your department")
+            raise HTTPException(status_code=404, detail="No Manager found in your department and organization")
+
         manager_id = manager.id
 
-    # Optional: handle Admin creating leave (if needed)
-    if role_type == "admin":
-        raise HTTPException(status_code=403, detail="Admins cannot apply for leaves.")
-
-    # Create leave with selected reviewer_id (can be None) and manager_id
+    # Create leave with reviewer_id and manager_id
     new_leave = await create_leave_in_db(
         db, leave, user_id, reviewer_id=reviewer_id, manager_id=manager_id
     )
+
     return LeaveResponse.model_validate(new_leave)
 
 async def get_all_leaves_service(db: AsyncSession, page: int, limit: int, current_user: User) -> PaginatedLeaveResponse:
@@ -156,14 +158,14 @@ async def update_leave_status_service(leave_id: str, status: str, db, current_us
         raise HTTPException(status_code=400, detail="Invalid status. Use: ACCEPTED or REJECTED")
 
     if role == "hr":
-        leave.status = new_status
+        leave.hr_status = new_status
     elif role == "manager":
         leave.manager_status = new_status
 
-    # Final decision
-    if leave.status == LeaveStatus.REJECTED or leave.manager_status == LeaveStatus.REJECTED:
+    # Determine final status
+    if leave.hr_status == LeaveStatus.REJECTED or leave.manager_status == LeaveStatus.REJECTED:
         leave.status = LeaveStatus.REJECTED
-    elif leave.status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:
+    elif leave.hr_status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:
         leave.status = LeaveStatus.ACCEPTED
     else:
         leave.status = LeaveStatus.PENDING
