@@ -13,7 +13,7 @@ class LeaveUpdate(BaseModel):
     leave_type: str | None = None
     description: str | None = None
     start_date: date | None = None
-    end_date: date | None = None    
+    end_date: date | None = None
 
 class LeaveResponse(BaseModel):
     id: str
@@ -24,8 +24,9 @@ class LeaveResponse(BaseModel):
     start_date: date
     end_date: date
     description: str
-    status: LeaveStatus
+    hr_status: Optional[LeaveStatus]
     manager_status: Optional[LeaveStatus]
+    status: LeaveStatus
     created_at: datetime
 
     model_config = {
