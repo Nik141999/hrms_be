@@ -39,7 +39,7 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
     reviewer_id = None
     manager_id = None
 
-    # Assign HR from same department and same organization
+    # If employee, assign HR reviewer
     if role_type == "employee":
         hr_result = await db.execute(
             select(User)
@@ -57,7 +57,7 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
 
         reviewer_id = hr_user.id
 
-    # Assign Manager from same department and same organization
+    # Always assign manager if employee or HR
     if role_type in ["employee", "hr"]:
         mgr_result = await db.execute(
             select(User)
@@ -75,7 +75,7 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
 
         manager_id = manager.id
 
-    # Create leave with reviewer_id and manager_id
+    # Create leave request
     new_leave = await create_leave_in_db(
         db, leave, user_id, reviewer_id=reviewer_id, manager_id=manager_id
     )
@@ -147,15 +147,17 @@ async def update_leave_status_service(leave_id: str, status: str, db, current_us
     if role not in ["hr", "manager"]:
         raise HTTPException(status_code=403, detail="Only HR or Manager can update leave status")
 
-    if role == "hr" and leave.reviewer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
-    if role == "manager" and leave.manager_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not assigned as manager for this leave.")
+    if role == "hr":
+        if leave.reviewer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
+    if role == "manager":
+        if leave.manager_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You are not assigned as manager for this leave.")
 
     try:
         new_status = LeaveStatus(status.upper())
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid status. Use: ACCEPTED or REJECTED")
+        raise HTTPException(status_code=400, detail="Invalid status")
 
     if role == "hr":
         leave.hr_status = new_status
@@ -165,7 +167,9 @@ async def update_leave_status_service(leave_id: str, status: str, db, current_us
     # Determine final status
     if leave.hr_status == LeaveStatus.REJECTED or leave.manager_status == LeaveStatus.REJECTED:
         leave.status = LeaveStatus.REJECTED
-    elif leave.hr_status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:
+    elif leave.reviewer_id and leave.hr_status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:
+        leave.status = LeaveStatus.ACCEPTED
+    elif not leave.reviewer_id and leave.manager_status == LeaveStatus.ACCEPTED:
         leave.status = LeaveStatus.ACCEPTED
     else:
         leave.status = LeaveStatus.PENDING

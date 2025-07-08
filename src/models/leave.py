@@ -22,7 +22,7 @@ class Leave(Base):
 
     hr_status = Column(SqlEnum(LeaveStatus), nullable=True, default=LeaveStatus.PENDING)
     manager_status = Column(SqlEnum(LeaveStatus), nullable=True, default=LeaveStatus.PENDING)
-    status = Column(SqlEnum(LeaveStatus), nullable=False, default=LeaveStatus.PENDING)
+    status = Column(SqlEnum(LeaveStatus), nullable=False, default=LeaveStatus.PENDING)  # Final status
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
