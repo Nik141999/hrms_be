@@ -25,6 +25,7 @@ class LeaveResponse(BaseModel):
     end_date: date
     description: str
     status: LeaveStatus
+    manager_status: Optional[LeaveStatus]
     created_at: datetime
 
     model_config = {
