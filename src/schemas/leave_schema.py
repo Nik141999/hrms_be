@@ -10,10 +10,10 @@ class LeaveCreate(BaseModel):
     end_date: date
 
 class LeaveUpdate(BaseModel):
-    leave_type: str | None = None
-    description: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    leave_type: Optional[str] = None
+    description: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 class LeaveResponse(BaseModel):
     id: str

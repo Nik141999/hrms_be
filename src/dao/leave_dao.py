@@ -14,7 +14,8 @@ async def create_leave_in_db(db: AsyncSession, leave: LeaveCreate, user_id: str,
         description=leave.description,
         start_date=leave.start_date,
         end_date=leave.end_date,
-        manager_status=None,
+        hr_status=LeaveStatus.PENDING if reviewer_id else None,
+        manager_status=LeaveStatus.PENDING,
         status=LeaveStatus.PENDING
     )
     db.add(new_leave)
