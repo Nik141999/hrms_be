@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
 from src.enums.leave_enums import LeaveStatus
@@ -15,6 +15,10 @@ class LeaveUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
+class LeaveStatusUpdate(BaseModel):
+    status: str = Field(..., description="ACCEPTED or REJECTED")
+    reason: Optional[str] = Field(None, description="Reason required if status is REJECTED")
+
 class LeaveResponse(BaseModel):
     id: str
     user_id: str
@@ -27,6 +31,8 @@ class LeaveResponse(BaseModel):
     hr_status: Optional[LeaveStatus]
     manager_status: Optional[LeaveStatus]
     status: LeaveStatus
+    hr_rejection_reason: Optional[str]
+    manager_rejection_reason: Optional[str]
     created_at: datetime
 
     model_config = {

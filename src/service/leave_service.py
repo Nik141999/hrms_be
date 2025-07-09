@@ -13,15 +13,13 @@ from src.dao.leave_dao import (
     get_leave_by_id_and_user,
     update_leave_in_db,
     delete_leave_in_db,
-    get_total_leave_count
 )
-from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse
+from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse, LeaveStatusUpdate
 
 async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: str) -> LeaveResponse:
     if leave.start_date < date.today():
         raise ValueError("Start date cannot be in the past.")
 
-    # Fetch current user
     user_result = await db.execute(select(User).where(User.id == user_id))
     current_user = user_result.scalar_one_or_none()
 
@@ -32,14 +30,12 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
     organization_id = current_user.organization_id
     role_type = current_user.role.role_type.lower()
 
-    # Admins cannot apply for leave
     if role_type == "admin":
         raise HTTPException(status_code=403, detail="Admins cannot apply for leaves.")
 
     reviewer_id = None
     manager_id = None
 
-    # If employee, assign HR reviewer
     if role_type == "employee":
         hr_result = await db.execute(
             select(User)
@@ -57,7 +53,6 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
 
         reviewer_id = hr_user.id
 
-    # Always assign manager if employee or HR
     if role_type in ["employee", "hr"]:
         mgr_result = await db.execute(
             select(User)
@@ -75,7 +70,6 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
 
         manager_id = manager.id
 
-    # Create leave request
     new_leave = await create_leave_in_db(
         db, leave, user_id, reviewer_id=reviewer_id, manager_id=manager_id
     )
@@ -87,17 +81,20 @@ async def get_all_leaves_service(db: AsyncSession, page: int, limit: int, curren
     role_type = current_user.role.role_type.lower()
 
     if role_type == "hr":
-        # HR sees only the leaves they are assigned to review
-        query = select(Leave).where(Leave.reviewer_id == current_user.id)
-        count_query = select(func.count()).select_from(Leave).where(Leave.reviewer_id == current_user.id)
+     query = select(Leave).where(
+        (Leave.reviewer_id == current_user.id) | (Leave.user_id == current_user.id)
+    )
+    
+     count_query = select(func.count()).select_from(Leave).where(
+        (Leave.reviewer_id == current_user.id) | (Leave.user_id == current_user.id)
+    )
+
 
     elif role_type == "manager":
-        # Manager sees only the leaves assigned to them as manager
         query = select(Leave).where(Leave.manager_id == current_user.id)
         count_query = select(func.count()).select_from(Leave).where(Leave.manager_id == current_user.id)
         
     elif role_type == "admin":
-        # Admin sees all leaves
         query = select(Leave)
         count_query = select(func.count()).select_from(Leave)    
 
@@ -135,8 +132,10 @@ async def delete_leave_service(leave_id: int, db: AsyncSession, user_id: str):
     await delete_leave_in_db(db, existing_leave)
     return {"message": "Leave deleted successfully"}
 
-async def update_leave_status_service(leave_id: str, status: str, db, current_user: User):
+async def update_leave_status_service(leave_id: str, status_update: LeaveStatusUpdate, db, current_user: User):
     role = current_user.role.role_type.lower()
+    status = status_update.status
+    reason = status_update.reason
 
     result = await db.execute(select(Leave).where(Leave.id == leave_id))
     leave = result.scalar_one_or_none()
@@ -147,24 +146,29 @@ async def update_leave_status_service(leave_id: str, status: str, db, current_us
     if role not in ["hr", "manager"]:
         raise HTTPException(status_code=403, detail="Only HR or Manager can update leave status")
 
-    if role == "hr":
-        if leave.reviewer_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
-    if role == "manager":
-        if leave.manager_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You are not assigned as manager for this leave.")
-
     try:
         new_status = LeaveStatus(status.upper())
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid status")
 
-    if role == "hr":
-        leave.hr_status = new_status
-    elif role == "manager":
-        leave.manager_status = new_status
+    if new_status == LeaveStatus.REJECTED and not reason:
+        raise HTTPException(status_code=400, detail="Rejection reason is required")
 
-    # Determine final status
+    if role == "hr":
+        if leave.reviewer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You are not assigned to review this leave.")
+        leave.hr_status = new_status
+        if new_status == LeaveStatus.REJECTED:
+            leave.hr_rejection_reason = reason
+
+    elif role == "manager":
+        if leave.manager_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You are not assigned as manager for this leave.")
+        leave.manager_status = new_status
+        if new_status == LeaveStatus.REJECTED:
+            leave.manager_rejection_reason = reason
+
+    # Final status logic
     if leave.hr_status == LeaveStatus.REJECTED or leave.manager_status == LeaveStatus.REJECTED:
         leave.status = LeaveStatus.REJECTED
     elif leave.reviewer_id and leave.hr_status == LeaveStatus.ACCEPTED and leave.manager_status == LeaveStatus.ACCEPTED:

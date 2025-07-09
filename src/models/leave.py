@@ -23,8 +23,12 @@ class Leave(Base):
     hr_status = Column(SqlEnum(LeaveStatus), nullable=True, default=LeaveStatus.PENDING)
     manager_status = Column(SqlEnum(LeaveStatus), nullable=True, default=LeaveStatus.PENDING)
     status = Column(SqlEnum(LeaveStatus), nullable=False, default=LeaveStatus.PENDING)  # Final status
+    
+    hr_rejection_reason = Column(String(255), nullable=True)
+    manager_rejection_reason = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="leaves", foreign_keys=[user_id], lazy="selectin")
     reviewer = relationship("User", back_populates="assigned_leaves", foreign_keys=[reviewer_id], lazy="selectin")
