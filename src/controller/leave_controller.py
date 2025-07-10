@@ -1,5 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+from src.enums.leave_enums import LeaveStatus
 from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate
 from src.service.leave_service import (
     create_leave_service,
@@ -16,8 +18,11 @@ async def create_leave_controller(leave: LeaveCreate, db: AsyncSession, user_id:
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-async def get_all_leaves_controller(db: AsyncSession, page: int, limit: int, current_user: User):
-    return await get_all_leaves_service(db, page, limit, current_user)
+async def get_all_leaves_controller(
+    db: AsyncSession, page: int, limit: int, current_user: User, status: Optional[LeaveStatus]
+):
+    return await get_all_leaves_service(db, page, limit, current_user, status)
+
 
 async def update_leave_controller(leave_id: str, leave: LeaveUpdate, db: AsyncSession, user_id: str):
     return await update_leave_service(leave_id, leave, db, user_id)
