@@ -13,8 +13,7 @@ async def create_organization_type(data: OrganizationTypeCreate, db: AsyncSessio
     return await create_organization_type_controller(db, data.org_type)
 
 
-@router.get("/", response_model=PaginatedOrganizationTypeResponse,
-            dependencies=[Depends(PermissionChecker("/organization-types", "view"))])
+@router.get("/", response_model=PaginatedOrganizationTypeResponse)
 async def get_all_organization_types(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
