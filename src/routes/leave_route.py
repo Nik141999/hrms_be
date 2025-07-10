@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
+from src.enums.leave_enums import LeaveStatus
 from src.utils.auth import get_current_user
 from src.schemas.leave_schema import LeaveCreate, LeaveResponse, LeaveUpdate, PaginatedLeaveResponse, LeaveStatusUpdate
 from src.utils.permission_checker import PermissionChecker
@@ -27,10 +29,11 @@ async def create_leave(
 async def get_all_leaves(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
+    status: Optional[LeaveStatus] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_all_leaves_controller(db, page, limit, current_user)
+    return await get_all_leaves_controller(db, page, limit, current_user, status)
 
 @router.put("/leaves/{leave_id}", response_model=LeaveResponse, dependencies=[Depends(PermissionChecker("/leaves/{leave_id}", "edit"))])
 async def update_leave(

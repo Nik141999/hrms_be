@@ -1,5 +1,6 @@
 from sqlalchemy import func
 from sqlalchemy.future import select
+from typing import Optional
 from fastapi import HTTPException, status
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,34 +77,36 @@ async def create_leave_service(leave: LeaveCreate, db: AsyncSession, user_id: st
 
     return LeaveResponse.model_validate(new_leave)
 
-async def get_all_leaves_service(db: AsyncSession, page: int, limit: int, current_user: User) -> PaginatedLeaveResponse:
+async def get_all_leaves_service(
+    db: AsyncSession, page: int, limit: int, current_user: User, status: Optional[LeaveStatus]
+) -> PaginatedLeaveResponse:
     skip = (page - 1) * limit
     role_type = current_user.role.role_type.lower()
 
+    base_query = select(Leave)
+    filters = []
+
     if role_type == "hr":
-     query = select(Leave).where(
-        (Leave.reviewer_id == current_user.id) | (Leave.user_id == current_user.id)
-    )
-    
-     count_query = select(func.count()).select_from(Leave).where(
-        (Leave.reviewer_id == current_user.id) | (Leave.user_id == current_user.id)
-    )
-
-
+        filters.append((Leave.reviewer_id == current_user.id) | (Leave.user_id == current_user.id))
     elif role_type == "manager":
-        query = select(Leave).where(Leave.manager_id == current_user.id)
-        count_query = select(func.count()).select_from(Leave).where(Leave.manager_id == current_user.id)
-        
+        filters.append(Leave.manager_id == current_user.id)
     elif role_type == "admin":
-        query = select(Leave)
-        count_query = select(func.count()).select_from(Leave)    
-
+        pass  # no filter
     else:
-       query = select(Leave).where(Leave.user_id == current_user.id)
-       count_query = select(func.count()).select_from(Leave).where(Leave.user_id == current_user.id)
+        filters.append(Leave.user_id == current_user.id)
 
+    if status:
+        filters.append(Leave.status == status)
 
-    leaves_result = await db.execute(query.offset(skip).limit(limit))
+    if filters:
+        from sqlalchemy import and_
+        base_query = base_query.where(and_(*filters))
+
+    count_query = select(func.count()).select_from(Leave)
+    if filters:
+        count_query = count_query.where(and_(*filters))
+
+    leaves_result = await db.execute(base_query.offset(skip).limit(limit))
     count_result = await db.execute(count_query)
 
     leaves = leaves_result.scalars().all()
