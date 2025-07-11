@@ -44,9 +44,6 @@ async def create_refresh_token(data: dict, expires_delta: timedelta):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt, expire
 
-
-
-
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     # Check User
     result = await db.execute(
