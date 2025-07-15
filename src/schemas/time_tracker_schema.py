@@ -10,6 +10,7 @@ class TimeTrackerBase(BaseModel):
     activity: Optional[str]
     break_start: Optional[datetime]
     total_break_duration: Optional[str]
+    resume_time: Optional[datetime]  # NEW
 
 class TimeTrackerCreate(TimeTrackerBase):
     pass
@@ -19,6 +20,7 @@ class TimeTrackerUpdate(BaseModel):
     duration: Optional[str] = None
     break_start: Optional[datetime] = None
     total_break_duration: Optional[str] = None
+    resume_time: Optional[datetime] = None  # NEW
 
     class Config:
         orm_mode = True

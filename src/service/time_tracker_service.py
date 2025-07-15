@@ -41,7 +41,16 @@ async def get_total_work_duration(db: AsyncSession, time_tracker_id: str):
     total_duration = timedelta()
     for log in work_logs:
         if log.duration:
-            h, m, s = map(int, log.duration.split(":"))
-            total_duration += timedelta(hours=h, minutes=m, seconds=s)
+            try:
+                parts = log.duration.strip().split(":")
+                if len(parts) == 3 and all(p.strip().isdigit() for p in parts):
+                    h, m, s = map(int, parts)
+                    total_duration += timedelta(hours=h, minutes=m, seconds=s)
+                else:
+                    # Skip invalid durations like "-1 day, 23:58:39"
+                    continue
+            except Exception as e:
+                print(f"Invalid log.duration='{log.duration}': {e}")
+                continue
 
     return total_duration
