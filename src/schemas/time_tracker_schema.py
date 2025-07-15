@@ -8,13 +8,20 @@ class TimeTrackerBase(BaseModel):
     punch_out: Optional[datetime]
     duration: Optional[str]
     activity: Optional[str]
+    break_start: Optional[datetime]
+    total_break_duration: Optional[str]
 
 class TimeTrackerCreate(TimeTrackerBase):
     pass
 
 class TimeTrackerUpdate(BaseModel):
-    punch_out: Optional[datetime]
-    duration: Optional[str]
+    punch_out: Optional[datetime] = None
+    duration: Optional[str] = None
+    break_start: Optional[datetime] = None
+    total_break_duration: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 class TimeTrackerOut(TimeTrackerBase):
     id: str

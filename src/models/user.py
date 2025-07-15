@@ -55,5 +55,11 @@ class User(Base):
         foreign_keys="Leave.manager_id",
         lazy="selectin"
     )
+    work_logs = relationship(
+        "WorkLog",
+        back_populates="user",
+        foreign_keys="WorkLog.user_id",
+        lazy="selectin"
+    )
 
     
