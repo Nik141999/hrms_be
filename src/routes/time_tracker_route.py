@@ -10,7 +10,7 @@ router = APIRouter(prefix="/time-tracker", tags=["TimeTracker"])
 
 @router.post("/toggle", response_model=TimeTrackerOut)
 async def toggle(
-    action: str = Query("toggle", enum=["toggle", "punchout"]),
+    action: str = Query(..., enum=["toggle", "break", "punchout"]),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
