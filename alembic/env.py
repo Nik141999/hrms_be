@@ -12,6 +12,8 @@ from src.models.organization import Organization
 from src.models.department import Department
 from src.models.time_tracker import TimeTracker
 from src.models.orgatization_type import OrganizationType
+from src.models.breakLog import BreakLog
+from src.models.workLog import WorkLog
 
 from src.database import Base
 
@@ -28,7 +30,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata,
+target_metadata = Base.metadata
     
 
 # other values from the config, defined by the needs of env.py,

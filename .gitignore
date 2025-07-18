@@ -4,8 +4,9 @@ __pycache__/
 *.so
 
 # Virtual environment
+.venv/
 venv/
-.env
+.env/
 
 # Alembic cache
 alembic/versions/__pycache__/
